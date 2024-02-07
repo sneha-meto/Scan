@@ -1,4 +1,5 @@
 using Common;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -15,6 +16,7 @@ using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage.Streams;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -26,9 +28,11 @@ namespace AppScan {
     public sealed partial class MainWindow : Window {
         private const string TAG = "MainWindow";
         private BluetoothLEAdvertisementWatcher watcher = new();
+        private BluetoothLEAdvertisementPublisher pub = new();
 
         public MainWindow() {
             this.InitializeComponent();
+            StartAdv();
         }
         public void StartDeviceWatcher() {
             Log.D(TAG, "StartDeviceWatcher called");
@@ -60,6 +64,25 @@ namespace AppScan {
                 btn_scan.Content = "Start Scanning";
           
             }
+        }
+
+        private void StartAdv() {
+            pub.StatusChanged += StatChange;
+            pub.Advertisement.ManufacturerData.Add(createData("hello"));
+            pub.Start();
+        }
+
+        private BluetoothLEManufacturerData createData(string data) {
+            var datawriter = new DataWriter();
+            datawriter.WriteInt32(data.Length);
+            datawriter.WriteString(data);
+            return new BluetoothLEManufacturerData(0x7005, datawriter.DetachBuffer());
+        }
+
+        private void StatChange(BluetoothLEAdvertisementPublisher sender, BluetoothLEAdvertisementPublisherStatusChangedEventArgs args) {
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, () => 
+            { myText.Text = $"{args.Status.ToString()}, {args.Error.ToString()}";
+            });
         }
     }
 }
